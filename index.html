@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRUTHBOT · Fact-Checking Assistant</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="page">
+      <header class="top-nav">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <span>TRUTHBOT</span>
+        </div>
+        <div class="user-info">
+          <div class="user-meta">
+            <strong>{{ user.name if user else "Guest" }}</strong>
+            <span>{{ user.email if user else "" }}</span>
+          </div>
+          <a href="{{ url_for('logout') }}" class="ghost-btn">Logout</a>
+        </div>
+      </header>
+
+      <header class="hero">
+        <div>
+          <p class="eyebrow">TRUTHBOT · Fact-Checking Assistant</p>
+          <h1>Evidence-backed fact checks in seconds</h1>
+          <p class="subtitle">
+            Paste any text, headline, or URL. TRUTHBOT extracts factual claims,
+            searches trusted sources, and responds with a verdict, confidence
+            score, and citations—designed for both mobile and desktop.
+          </p>
+        </div>
+        <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f50d.svg" alt="Search icon" class="hero-icon" />
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash-list">
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <main class="content">
+        <section class="card input-card">
+          <form id="fact-form">
+            <label for="claim-input">What would you like to verify?</label>
+            <textarea
+              id="claim-input"
+              name="claim"
+              rows="4"
+              placeholder="Example: “COVID-19 vaccines are safe and effective”"
+              required
+            ></textarea>
+
+            <div class="chip-row" id="suggestions">
+              <button type="button" data-text="Running 30 minutes a day improves heart health">
+                Running boosts heart health
+              </button>
+              <button type="button" data-text="Electric vehicles produce fewer emissions than gasoline cars over their lifetime">
+                EV emissions vs gasoline
+              </button>
+              <button type="button" data-text="Drinking coffee causes dehydration">
+                Coffee causes dehydration
+              </button>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="primary">
+                <span>Check facts</span>
+                <span class="loader" aria-hidden="true"></span>
+              </button>
+              <p class="helper">TRUTHBOT analyzes claims conservatively and always cites sources.</p>
+            </div>
+          </form>
+        </section>
+
+        <section class="card results-card" id="results">
+          <div class="empty-state">
+            <h2>Your results will appear here</h2>
+            <p>
+              TRUTHBOT will break down each claim, show a verdict, confidence
+              score, evidence bullets, and a recommendation on whether to share.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="result-template">
+      <div class="result-item">
+        <div class="result-headline">
+          <p class="verdict"></p>
+          <p class="recommendation"></p>
+        </div>
+        <p class="explanation"></p>
+        <div class="evidence"></div>
+        <p class="timestamp"></p>
+      </div>
+    </template>
+
+    <script>
+      const form = document.getElementById("fact-form");
+      const textarea = document.getElementById("claim-input");
+      const resultsCard = document.getElementById("results");
+      const resultTemplate = document.getElementById("result-template");
+      const loader = document.querySelector(".loader");
+      const suggestions = document.querySelectorAll("#suggestions button");
+
+      suggestions.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          textarea.value = btn.dataset.text;
+          textarea.focus();
+        });
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const claim = textarea.value.trim();
+        if (!claim) return;
+
+        toggleLoading(true);
+        try {
+          const response = await fetch("/api/fact-check", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ input: claim, type: "text" }),
+          });
+
+          const data = await response.json();
+          if (!response.ok || data.error) {
+            showError(data.message || "Unable to process request.");
+            return;
+          }
+
+          renderResults(data);
+        } catch (error) {
+          showError("Network error. Please try again.");
+        } finally {
+          toggleLoading(false);
+        }
+      });
+
+      function toggleLoading(isLoading) {
+        if (isLoading) {
+          loader.classList.add("visible");
+        } else {
+          loader.classList.remove("visible");
+        }
+      }
+
+      function showError(message) {
+        resultsCard.innerHTML = `
+          <div class="empty-state error">
+            <h2>Something went wrong</h2>
+            <p>${message}</p>
+          </div>
+        `;
+      }
+
+      function renderResults(data) {
+        const { results = [], timestamp } = data;
+        if (!results.length) {
+          showError("No claims detected. Try rephrasing your input.");
+          return;
+        }
+
+        resultsCard.innerHTML = "";
+        results.forEach((result) => {
+          const node = resultTemplate.content.cloneNode(true);
+          const verdict = node.querySelector(".verdict");
+          const recommendation = node.querySelector(".recommendation");
+          const explanation = node.querySelector(".explanation");
+          const evidenceList = node.querySelector(".evidence");
+          const time = node.querySelector(".timestamp");
+
+          verdict.textContent = result.verdict_line;
+          recommendation.textContent = result.recommendation;
+          explanation.textContent = result.explanation;
+          const generatedAt = result.timestamp || timestamp || Date.now();
+          time.textContent = `Generated ${new Date(generatedAt).toLocaleString()}`;
+
+          evidenceList.innerHTML = "";
+          if (!result.evidence.length) {
+            const empty = document.createElement("p");
+            empty.classList.add("finding");
+            empty.textContent = "No evidence supplied.";
+            evidenceList.appendChild(empty);
+          } else {
+            result.evidence.forEach((item) => {
+              const bullet = document.createElement("article");
+              bullet.classList.add("evidence-item");
+              bullet.innerHTML = `
+                <p class="source">${item.source}</p>
+                <p class="finding">${item.finding}</p>
+                <p class="date">Date: ${item.date}</p>
+              `;
+              evidenceList.appendChild(bullet);
+            });
+          }
+
+          resultsCard.appendChild(node);
+        });
+      }
+    </script>
+  </body>
+</html>

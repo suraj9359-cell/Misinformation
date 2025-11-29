@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRUTHBOT · Sign in</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="auth-body">
+    <div class="auth-card">
+      <div class="auth-header">
+        <span class="brand-dot"></span>
+        <div>
+          <p class="eyebrow">TRUTHBOT</p>
+          <h1>Welcome back</h1>
+        </div>
+      </div>
+      <p class="subtitle">Sign in to run fact-checks across mobile and desktop.</p>
+
+      {% if error %}
+        <div class="flash-message error">{{ error }}</div>
+      {% endif %}
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash-list">
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" class="auth-form">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@example.com" required />
+
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required />
+
+        <button type="submit" class="primary">Sign in</button>
+      </form>
+
+      <p class="auth-switch">
+        Need an account?
+        <a href="{{ url_for('register') }}">Create one</a>
+      </p>
+    </div>
+  </body>
+</html>
+

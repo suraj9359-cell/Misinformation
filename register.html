@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRUTHBOT · Create account</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="auth-body">
+    <div class="auth-card">
+      <div class="auth-header">
+        <span class="brand-dot"></span>
+        <div>
+          <p class="eyebrow">TRUTHBOT</p>
+          <h1>Create your account</h1>
+        </div>
+      </div>
+      <p class="subtitle">Store your fact-check history securely and sync across devices.</p>
+
+      {% if error %}
+        <div class="flash-message error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        <label>Full name</label>
+        <input type="text" name="name" placeholder="Ada Lovelace" required />
+
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@example.com" required />
+
+        <label>Password</label>
+        <input type="password" name="password" placeholder="At least 6 characters" required />
+
+        <label>Confirm password</label>
+        <input type="password" name="confirm_password" placeholder="Repeat password" required />
+
+        <button type="submit" class="primary">Create account</button>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account?
+        <a href="{{ url_for('login') }}">Sign in</a>
+      </p>
+    </div>
+  </body>
+</html>
+
